@@ -8,7 +8,7 @@ export default function Header({ dbStatus }) {
     <header className="app-header">
       <div className="header-top">
         <div className="brand-section">
-          <h1 className="app-title">MERN Todo</h1>
+          <h1 className="app-title">Todo</h1>
         </div>
 
         <div className="header-actions">
