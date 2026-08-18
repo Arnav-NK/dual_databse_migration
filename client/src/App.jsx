@@ -11,7 +11,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [toast, setToast] = useState(null);
-  const [dbStatus, setDbStatus] = useState({ database: 'Connecting', dbHost: '', dbName: '' });
+  const [dbStatus, setDbStatus] = useState({ status: 'Connecting', dbHost: '', dbName: '' });
 
   // Theme Management
   const [theme, setTheme] = useState(() => {
@@ -33,7 +33,7 @@ export default function App() {
     setToast({ message, type, id: Date.now() });
   };
 
-  // Check MongoDB health & fetch initial todos
+  // Check Database health & fetch initial todos
   const loadData = async () => {
     try {
       // Check health
@@ -41,7 +41,7 @@ export default function App() {
         const health = await todoService.checkHealth();
         setDbStatus(health);
       } catch (err) {
-        setDbStatus({ database: 'Disconnected', dbHost: '', dbName: '' });
+        setDbStatus({ status: 'Disconnected', dbHost: '', dbName: '' });
       }
 
       // Fetch todos
@@ -49,7 +49,7 @@ export default function App() {
       setTodos(data);
     } catch (err) {
       console.error(err);
-      showToast('Could not load tasks from MongoDB', 'error');
+      showToast('Could not load tasks from database. Please check your connection.', 'error');
     } finally {
       setLoading(false);
     }
@@ -64,7 +64,7 @@ export default function App() {
         const health = await todoService.checkHealth();
         setDbStatus(health);
       } catch {
-        setDbStatus({ database: 'Disconnected', dbHost: '', dbName: '' });
+        setDbStatus({ status: 'Disconnected', dbHost: '', dbName: '' });
       }
     }, 15000);
 
@@ -196,6 +196,8 @@ export default function App() {
     return todos;
   }, [todos, filter]);
 
+  const dbLabel = dbStatus.dbType || (dbStatus.useSQL ? 'SQL Database' : 'MongoDB (NoSQL)');
+
   return (
     <div className="app-wrapper">
       <Header
@@ -234,7 +236,7 @@ export default function App() {
 
       <footer className="app-info-footer">
         <p>Double-click a task or click the edit icon to edit • Press Enter to save</p>
-        <p>MongoDB Database: <code>todolist_mern</code></p>
+        <p>Active Engine: <code>{dbLabel}</code></p>
       </footer>
 
       {toast && (

@@ -12,8 +12,15 @@ dotenv.config();
 
 const app = express();
 
-// Middlewares
-app.use(cors());
+// Middlewares with relaxed CORS for Vercel and third-party frontends
+app.use(
+  cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+  })
+);
+app.options('*', cors());
 app.use(express.json());
 
 // Initialize the active database based on USE_SQL flag
@@ -24,17 +31,19 @@ const initDatabase = async () => {
   console.log(`🚩 USE_SQL flag: ${process.env.USE_SQL}`);
   console.log(`========================================\n`);
 
-  if (sqlMode) {
-    await connectSQL();
-  } else {
-    await connectDB();
+  try {
+    if (sqlMode) {
+      await connectSQL();
+    } else {
+      await connectDB();
+    }
+  } catch (err) {
+    console.error('⚠️ Database connection error during startup:', err.message);
   }
 };
 
 // Initialize DB immediately
-initDatabase().catch((err) => {
-  console.error('Database initialization failed:', err);
-});
+initDatabase();
 
 // API Routes
 app.use('/api/todos', todoRoutes);
@@ -60,7 +69,16 @@ app.get('/api/health', (req, res) => {
   }
 });
 
-// Serve frontend static build in production
+// Root welcome route
+app.get('/api', (req, res) => {
+  res.json({
+    message: 'MERN & SQL Dual-Database API is running',
+    health: '/api/health',
+    todos: '/api/todos'
+  });
+});
+
+// Serve frontend static build in production (if deployed as full-stack monolith)
 const clientDistPath = path.resolve(__dirname, '../client/dist');
 app.use(express.static(clientDistPath));
 
@@ -69,7 +87,10 @@ app.get('*', (req, res) => {
   if (require('fs').existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
-    res.status(404).json({ message: 'API Server is running. Client build not found.' });
+    res.json({
+      message: 'Dual-Database API Server is active.',
+      endpoints: ['/api/health', '/api/todos']
+    });
   }
 });
 

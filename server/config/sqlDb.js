@@ -5,31 +5,55 @@ let sqlClient = null;
 let dbEngine = null; // 'postgres' | 'sqlite'
 
 const connectSQL = async () => {
-  const databaseUrl = process.env.DATABASE_URL;
+  let databaseUrl = process.env.DATABASE_URL;
 
   if (databaseUrl && (databaseUrl.startsWith('postgres://') || databaseUrl.startsWith('postgresql://'))) {
-    // PostgreSQL / Neon DB Connection
     const { Pool } = require('pg');
-    const isNeon = databaseUrl.includes('neon.tech');
-    const isSslRequired = databaseUrl.includes('sslmode=require') || isNeon || process.env.NODE_ENV === 'production';
+    
+    // Clean up Neon connection string if channel_binding is present
+    let cleanUrl = databaseUrl;
+    if (cleanUrl.includes('channel_binding=')) {
+      cleanUrl = cleanUrl.replace(/[?&]channel_binding=[^&]+/g, '');
+    }
+
+    const isNeon = cleanUrl.includes('neon.tech');
+    const isSslRequired = cleanUrl.includes('sslmode=') || isNeon || process.env.NODE_ENV === 'production';
 
     const pool = new Pool({
-      connectionString: databaseUrl,
-      ssl: isSslRequired ? { rejectUnauthorized: false } : false
+      connectionString: cleanUrl,
+      ssl: isSslRequired ? { rejectUnauthorized: false } : false,
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000
     });
 
-    // Test connection
-    const client = await pool.connect();
-    const hostName = pool.options.host || 'Neon/PostgreSQL';
-    console.log(`🐘 SQL Connected: PostgreSQL (${isNeon ? 'Neon Serverless Postgres' : 'PostgreSQL'}) on ${hostName}`);
-    client.release();
+    pool.on('error', (err) => {
+      console.error('Unexpected error on idle PostgreSQL client:', err);
+    });
+
+    // Test connection with retry for serverless wake-up
+    let connected = false;
+    let attempts = 0;
+    while (!connected && attempts < 3) {
+      try {
+        attempts++;
+        const client = await pool.connect();
+        const hostName = pool.options.host || 'Neon/PostgreSQL';
+        console.log(`🐘 SQL Connected: PostgreSQL (${isNeon ? 'Neon Serverless' : 'PostgreSQL'}) on ${hostName}`);
+        client.release();
+        connected = true;
+      } catch (err) {
+        console.warn(`PostgreSQL connection attempt ${attempts} failed: ${err.message}. Retrying in 2s...`);
+        if (attempts >= 3) throw err;
+        await new Promise((res) => setTimeout(res, 2000));
+      }
+    }
 
     dbEngine = isNeon ? 'neon-postgres' : 'postgres';
     sqlClient = {
       engine: dbEngine,
       isNeon,
       async query(text, params = []) {
-        // Convert ? placeholders to $1, $2, etc. if needed
         let pgText = text;
         let index = 1;
         while (pgText.includes('?')) {
