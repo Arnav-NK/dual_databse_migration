@@ -13,21 +13,10 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [dbStatus, setDbStatus] = useState({ status: 'Connecting', dbHost: '', dbName: '' });
 
-  // Theme Management
-  const [theme, setTheme] = useState(() => {
-    const saved = localStorage.getItem('mern-todo-theme');
-    if (saved) return saved;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  });
-
+  // Dark Theme Only
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('mern-todo-theme', theme);
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
-  };
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }, []);
 
   const showToast = (message, type = 'info') => {
     setToast({ message, type, id: Date.now() });
@@ -196,15 +185,9 @@ export default function App() {
     return todos;
   }, [todos, filter]);
 
-  const dbLabel = dbStatus.dbType || (dbStatus.useSQL ? 'SQL Database' : 'MongoDB (NoSQL)');
-
   return (
     <div className="app-wrapper">
-      <Header
-        theme={theme}
-        toggleTheme={toggleTheme}
-        dbStatus={dbStatus}
-      />
+      <Header dbStatus={dbStatus} />
 
       <main className="main-card">
         <TodoInput
@@ -233,11 +216,6 @@ export default function App() {
           />
         )}
       </main>
-
-      <footer className="app-info-footer">
-        <p>Double-click a task or click the edit icon to edit • Press Enter to save</p>
-        <p>Active Engine: <code>{dbLabel}</code></p>
-      </footer>
 
       {toast && (
         <div className="toast-container">

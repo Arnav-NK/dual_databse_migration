@@ -1,37 +1,37 @@
 /* ==========================================================================
-   CSS Design System & Base Variables
+   CSS Design System & Base Variables (Dark Theme Only)
    ========================================================================== */
 
 :root {
-  /* Light Theme Palette */
-  --bg-app: #f6f8fa;
-  --bg-card: #ffffff;
-  --bg-surface: #f1f4f8;
-  --bg-surface-hover: #e8ecf2;
-  --border-color: #e2e8f0;
+  /* Dark Theme Palette (Default & Permanent) */
+  --bg-app: #0b1329;
+  --bg-card: #131f37;
+  --bg-surface: #1e2d4d;
+  --bg-surface-hover: #26385f;
+  --border-color: #23355b;
   --border-focus: #3b82f6;
 
   /* Typography Colors */
-  --text-primary: #1e293b;
-  --text-secondary: #64748b;
-  --text-tertiary: #94a3b8;
-  --text-completed: #94a3b8;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+  --text-completed: #64748b;
 
   /* Accent & Status Colors */
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --primary-subtle: #eff6ff;
+  --primary: #3b82f6;
+  --primary-hover: #60a5fa;
+  --primary-subtle: rgba(59, 130, 246, 0.15);
   --success: #10b981;
-  --success-subtle: #ecfdf5;
+  --success-subtle: rgba(16, 185, 129, 0.15);
   --danger: #ef4444;
   --danger-hover: #dc2626;
-  --danger-subtle: #fef2f2;
+  --danger-subtle: rgba(239, 68, 68, 0.15);
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
-  --shadow-card: 0 12px 30px rgba(0, 0, 0, 0.06);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+  --shadow-card: 0 14px 35px rgba(0, 0, 0, 0.45);
 
   /* Radius */
   --radius-sm: 6px;
@@ -42,38 +42,6 @@
   /* Font */
   --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
-}
-
-[data-theme='dark'] {
-  /* Dark Theme Palette */
-  --bg-app: #0f172a;
-  --bg-card: #1e293b;
-  --bg-surface: #334155;
-  --bg-surface-hover: #475569;
-  --border-color: #334155;
-  --border-focus: #60a5fa;
-
-  /* Typography Colors */
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-tertiary: #64748b;
-  --text-completed: #64748b;
-
-  /* Accent & Status */
-  --primary: #3b82f6;
-  --primary-hover: #60a5fa;
-  --primary-subtle: rgba(59, 130, 246, 0.15);
-  --success: #10b981;
-  --success-subtle: rgba(16, 185, 129, 0.15);
-  --danger: #f87171;
-  --danger-hover: #ef4444;
-  --danger-subtle: rgba(239, 68, 68, 0.15);
-
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-  --shadow-card: 0 14px 35px rgba(0, 0, 0, 0.45);
 }
 
 /* ==========================================================================
@@ -94,7 +62,6 @@ html, body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 #root {
@@ -114,7 +81,7 @@ html, body {
   padding: 40px 20px 60px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
 }
 
 /* Header */
@@ -133,23 +100,10 @@ html, body {
 .brand-section {
   display: flex;
   align-items: center;
-  gap: 12px;
-}
-
-.logo-badge {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--primary) 0%, #1d4ed8 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
 }
 
 .app-title {
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text-primary);
@@ -165,11 +119,11 @@ html, body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 12px;
+  padding: 6px 14px;
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-full);
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 500;
   color: var(--text-secondary);
   box-shadow: var(--shadow-sm);
@@ -190,25 +144,6 @@ html, body {
   background-color: var(--danger);
 }
 
-.theme-toggle-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-  background-color: var(--bg-card);
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.theme-toggle-btn:hover {
-  background-color: var(--bg-surface);
-  color: var(--text-primary);
-}
-
 /* ==========================================================================
    Card Main Container
    ========================================================================== */
@@ -221,7 +156,6 @@ html, body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 /* ==========================================================================
@@ -309,7 +243,7 @@ html, body {
   list-style: none;
   display: flex;
   flex-direction: column;
-  max-height: 520px;
+  max-height: 540px;
   overflow-y: auto;
 }
 
@@ -395,7 +329,7 @@ html, body {
   font-size: 0.98rem;
   font-family: inherit;
   color: var(--text-primary);
-  background-color: var(--bg-card);
+  background-color: var(--bg-surface);
   border: 1px solid var(--primary);
   border-radius: var(--radius-sm);
   outline: none;
@@ -415,7 +349,6 @@ html, body {
   opacity: 1;
 }
 
-/* For mobile touch screens where hover isn't present */
 @media (hover: none) {
   .todo-item-actions {
     opacity: 1;
@@ -630,24 +563,4 @@ html, body {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-/* ==========================================================================
-   Footer Info
-   ========================================================================== */
-
-.app-info-footer {
-  text-align: center;
-  font-size: 0.78rem;
-  color: var(--text-tertiary);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.app-info-footer code {
-  font-family: var(--font-mono);
-  background-color: var(--bg-surface);
-  padding: 2px 6px;
-  border-radius: 4px;
 }
