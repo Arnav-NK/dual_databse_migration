@@ -1,0 +1,14 @@
+{
+  "name": "mern-todo-app",
+  "version": "1.0.0",
+  "description": "Full-stack MERN Todo List Application",
+  "scripts": {
+    "server": "cd server && npm run dev",
+    "client": "cd client && npm run dev",
+    "dev": "concurrently \"cd server && npm run dev\" \"cd client && npm run dev\"",
+    "install:all": "cd server && npm install && cd ../client && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

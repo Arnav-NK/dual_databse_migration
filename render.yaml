@@ -1,0 +1,35 @@
+services:
+  # Web Service (Express Backend + Static Client)
+  - type: web
+    name: mern-dual-db-todo
+    env: node
+    plan: free
+    buildCommand: npm install && cd server && npm install && cd ../client && npm install && npm run build
+    startCommand: cd server && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      
+      # =========================================================================
+      # 🚩 DATABASE FLAG: Set 'true' for SQL (Postgres), 'false' for NoSQL (MongoDB)
+      # =========================================================================
+      - key: USE_SQL
+        value: "false"
+
+      # 🍃 NoSQL: MongoDB Atlas Connection String (used when USE_SQL is false)
+      - key: MONGODB_URI
+        sync: false
+
+      # 🐘 SQL: Render PostgreSQL Connection String (used when USE_SQL is true)
+      # In Render, you can attach a Render PostgreSQL Database and link DATABASE_URL
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mern-todo-postgres
+          property: connectionString
+
+# (Optional) Render Managed PostgreSQL Database for SQL mode
+databases:
+  - name: mern-todo-postgres
+    plan: free

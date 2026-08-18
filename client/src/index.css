@@ -1,0 +1,653 @@
+/* ==========================================================================
+   CSS Design System & Base Variables
+   ========================================================================== */
+
+:root {
+  /* Light Theme Palette */
+  --bg-app: #f6f8fa;
+  --bg-card: #ffffff;
+  --bg-surface: #f1f4f8;
+  --bg-surface-hover: #e8ecf2;
+  --border-color: #e2e8f0;
+  --border-focus: #3b82f6;
+
+  /* Typography Colors */
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-tertiary: #94a3b8;
+  --text-completed: #94a3b8;
+
+  /* Accent & Status Colors */
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-subtle: #eff6ff;
+  --success: #10b981;
+  --success-subtle: #ecfdf5;
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  --danger-subtle: #fef2f2;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --shadow-card: 0 12px 30px rgba(0, 0, 0, 0.06);
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  /* Font */
+  --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+[data-theme='dark'] {
+  /* Dark Theme Palette */
+  --bg-app: #0f172a;
+  --bg-card: #1e293b;
+  --bg-surface: #334155;
+  --bg-surface-hover: #475569;
+  --border-color: #334155;
+  --border-focus: #60a5fa;
+
+  /* Typography Colors */
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+  --text-completed: #64748b;
+
+  /* Accent & Status */
+  --primary: #3b82f6;
+  --primary-hover: #60a5fa;
+  --primary-subtle: rgba(59, 130, 246, 0.15);
+  --success: #10b981;
+  --success-subtle: rgba(16, 185, 129, 0.15);
+  --danger: #f87171;
+  --danger-hover: #ef4444;
+  --danger-subtle: rgba(239, 68, 68, 0.15);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  --shadow-card: 0 14px 35px rgba(0, 0, 0, 0.45);
+}
+
+/* ==========================================================================
+   Base Reset
+   ========================================================================== */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  min-height: 100vh;
+  font-family: var(--font-main);
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ==========================================================================
+   Layout & Container
+   ========================================================================== */
+
+.app-wrapper {
+  max-width: 680px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 40px 20px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Header */
+.app-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-badge {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--primary) 0%, #1d4ed8 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
+}
+
+.app-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-dot.online {
+  background-color: var(--success);
+  box-shadow: 0 0 0 2px var(--success-subtle);
+}
+
+.status-dot.offline {
+  background-color: var(--danger);
+}
+
+.theme-toggle-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-card);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.theme-toggle-btn:hover {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+/* ==========================================================================
+   Card Main Container
+   ========================================================================== */
+
+.main-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* ==========================================================================
+   Input Form
+   ========================================================================== */
+
+.todo-input-form {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  background-color: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
+  gap: 12px;
+}
+
+.input-toggle-all-btn {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: color 0.2s ease;
+}
+
+.input-toggle-all-btn:hover {
+  color: var(--text-primary);
+}
+
+.input-toggle-all-btn.active {
+  color: var(--primary);
+}
+
+.todo-input-field {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 1rem;
+  font-family: inherit;
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.todo-input-field::placeholder {
+  color: var(--text-tertiary);
+}
+
+.add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 8px 16px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.add-btn:hover {
+  background-color: var(--primary-hover);
+}
+
+.add-btn:active {
+  transform: scale(0.98);
+}
+
+.add-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   Todo List & Items
+   ========================================================================== */
+
+.todo-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+.todo-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.todo-list::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: var(--radius-full);
+}
+
+.todo-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--bg-card);
+  gap: 14px;
+  transition: background-color 0.15s ease;
+}
+
+.todo-item:last-child {
+  border-bottom: none;
+}
+
+.todo-item:hover {
+  background-color: var(--bg-surface);
+}
+
+.todo-item-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Custom Checkbox */
+.custom-checkbox {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--border-color);
+  background-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.custom-checkbox:hover {
+  border-color: var(--primary);
+}
+
+.custom-checkbox.checked {
+  background-color: var(--success);
+  border-color: var(--success);
+  color: white;
+}
+
+.todo-text {
+  font-size: 0.98rem;
+  color: var(--text-primary);
+  word-break: break-word;
+  transition: color 0.2s ease;
+  user-select: none;
+  cursor: pointer;
+}
+
+.todo-item.completed .todo-text {
+  color: var(--text-completed);
+  text-decoration: line-through;
+}
+
+/* Inline Edit Input */
+.inline-edit-input {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 0.98rem;
+  font-family: inherit;
+  color: var(--text-primary);
+  background-color: var(--bg-card);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-sm);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--primary-subtle);
+}
+
+/* Item Action Buttons */
+.todo-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.todo-item:hover .todo-item-actions {
+  opacity: 1;
+}
+
+/* For mobile touch screens where hover isn't present */
+@media (hover: none) {
+  .todo-item-actions {
+    opacity: 1;
+  }
+}
+
+.action-btn {
+  background: none;
+  border: none;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.action-btn:hover {
+  background-color: var(--bg-surface-hover);
+  color: var(--text-primary);
+}
+
+.action-btn.delete-btn:hover {
+  background-color: var(--danger-subtle);
+  color: var(--danger);
+}
+
+/* ==========================================================================
+   Footer & Filter Controls
+   ========================================================================== */
+
+.todo-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background-color: var(--bg-card);
+  border-top: 1px solid var(--border-color);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.items-counter {
+  font-weight: 500;
+}
+
+.filter-buttons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: var(--bg-surface);
+  padding: 3px;
+  border-radius: var(--radius-md);
+}
+
+.filter-btn {
+  border: none;
+  background: transparent;
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.filter-btn:hover {
+  color: var(--text-primary);
+}
+
+.filter-btn.active {
+  background-color: var(--bg-card);
+  color: var(--primary);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+.clear-completed-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s ease;
+  padding: 4px 6px;
+}
+
+.clear-completed-btn:hover {
+  color: var(--danger);
+}
+
+.clear-completed-btn:disabled {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   Empty States & Loading Skeleton
+   ========================================================================== */
+
+.empty-state {
+  padding: 48px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.empty-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: var(--bg-surface);
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.empty-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  max-width: 280px;
+}
+
+.skeleton-list {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.skeleton-item {
+  height: 24px;
+  background: linear-gradient(90deg, var(--bg-surface) 25%, var(--bg-surface-hover) 50%, var(--bg-surface) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ==========================================================================
+   Toast Notification
+   ========================================================================== */
+
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  font-weight: 500;
+  animation: slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.toast.success {
+  border-left: 4px solid var(--success);
+}
+
+.toast.error {
+  border-left: 4px solid var(--danger);
+}
+
+.toast.info {
+  border-left: 4px solid var(--primary);
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================================================
+   Footer Info
+   ========================================================================== */
+
+.app-info-footer {
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--text-tertiary);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.app-info-footer code {
+  font-family: var(--font-mono);
+  background-color: var(--bg-surface);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
