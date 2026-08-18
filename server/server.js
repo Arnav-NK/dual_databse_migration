@@ -2,28 +2,32 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
+
+// Load environment variables
+dotenv.config();
+
 const connectDB = require('./config/db');
 const { connectSQL } = require('./config/sqlDb');
 const { getTodoRepository, isSQLMode } = require('./repositories/todoRepositoryFactory');
 const todoRoutes = require('./routes/todoRoutes');
 
-// Load environment variables
-dotenv.config();
-
 const app = express();
 
-// Middlewares with relaxed CORS for Vercel and third-party frontends
-app.use(
-  cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-  })
-);
-app.options('*', cors());
+// 1. Universal CORS Middleware - Allow all origins, headers, and methods
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  next();
+});
+
+app.use(cors({ origin: '*' }));
 app.use(express.json());
 
-// Initialize the active database based on USE_SQL flag
+// 2. Immediate Database Initialization (non-blocking server start)
 const initDatabase = async () => {
   const sqlMode = isSQLMode();
   console.log(`\n========================================`);
@@ -38,18 +42,15 @@ const initDatabase = async () => {
       await connectDB();
     }
   } catch (err) {
-    console.error('⚠️ Database connection error during startup:', err.message);
+    console.error('⚠️ Database connection warning during startup:', err.message);
   }
 };
 
-// Initialize DB immediately
 initDatabase();
 
-// API Routes
-app.use('/api/todos', todoRoutes);
-
-// Health check route reporting active database type and status
-app.get('/api/health', (req, res) => {
+// 3. Health Check Endpoints (both /api/health and /health)
+const handleHealthCheck = (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
   try {
     const repository = getTodoRepository();
     const dbHealth = repository.getHealth();
@@ -61,46 +62,60 @@ app.get('/api/health', (req, res) => {
       ...dbHealth
     });
   } catch (error) {
-    res.status(500).json({
-      status: 'Error',
+    res.status(200).json({
+      status: 'Connecting',
       server: 'Running',
+      useSQL: isSQLMode(),
       error: error.message
     });
   }
-});
+};
 
-// Root welcome route
+app.get('/api/health', handleHealthCheck);
+app.get('/health', handleHealthCheck);
+
+// 4. API Routes
+app.use('/api/todos', todoRoutes);
+
+// 5. Root Info Route
 app.get('/api', (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
   res.json({
-    message: 'MERN & SQL Dual-Database API is running',
-    health: '/api/health',
-    todos: '/api/todos'
+    message: 'Dual-Database (MERN & SQL) API is running',
+    endpoints: {
+      health: '/api/health',
+      todos: '/api/todos'
+    },
+    useSQL: isSQLMode()
   });
 });
 
-// Serve frontend static build in production (if deployed as full-stack monolith)
+// 6. Serve static client build if present, otherwise return API info
 const clientDistPath = path.resolve(__dirname, '../client/dist');
 app.use(express.static(clientDistPath));
 
 app.get('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
   const indexPath = path.join(clientDistPath, 'index.html');
   if (require('fs').existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
     res.json({
-      message: 'Dual-Database API Server is active.',
-      endpoints: ['/api/health', '/api/todos']
+      message: 'Dual-Database Backend API Server is active.',
+      healthCheck: '/api/health',
+      todosEndpoint: '/api/todos'
     });
   }
 });
 
-// Global Error Handler
+// 7. Global Error Handler with CORS
 app.use((err, req, res, next) => {
   console.error('Unhandled Server Error:', err);
+  res.header('Access-Control-Allow-Origin', '*');
   res.status(500).json({ error: 'Internal Server Error', message: err.message });
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on port ${PORT}`);
 });
