@@ -1,7 +1,7 @@
 {
   "name": "mern-todo-app",
   "version": "1.0.0",
-  "description": "Full-stack MERN Todo List Application with Dual SQL & NoSQL Databases",
+  "description": "Full-stack MERN Todo List Application with Dual SQL & NoSQL Databases with Data Migration",
   "main": "server/server.js",
   "scripts": {
     "start": "node server/server.js",
@@ -9,7 +9,10 @@
     "client": "cd client && npm run dev",
     "dev": "concurrently \"cd server && npm run dev\" \"cd client && npm run dev\"",
     "build": "cd client && npm install && npm run build",
-    "install:all": "npm install && cd server && npm install && cd ../client && npm install"
+    "install:all": "npm install && cd server && npm install && cd ../client && npm install",
+    "migrate:sql-to-mongo": "cd server && npm run migrate:sql-to-mongo",
+    "migrate:mongo-to-sql": "cd server && npm run migrate:mongo-to-sql",
+    "sync:both": "cd server && npm run sync:both"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

@@ -1,11 +1,14 @@
 {
   "name": "mern-todo-server",
   "version": "1.0.0",
-  "description": "Backend API supporting Dual Databases (SQL & NoSQL/MongoDB) with JWT Auth",
+  "description": "Backend API supporting Dual Databases (SQL & NoSQL/MongoDB) with JWT Auth & Data Migration",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "migrate:sql-to-mongo": "node scripts/migrate-sql-to-mongo.js",
+    "migrate:mongo-to-sql": "node scripts/migrate-mongo-to-sql.js",
+    "sync:both": "node scripts/sync-databases.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
