@@ -19,7 +19,7 @@ const app = express();
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-admin-key');
   if (req.method === 'OPTIONS') {
     return res.sendStatus(204);
   }
@@ -29,12 +29,15 @@ app.use((req, res, next) => {
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
-// 2. Immediate Database Initialization (non-blocking server start)
+// 2. Database Initialization & Developer Auto-Migration on startup
 const initDatabase = async () => {
   const sqlMode = isSQLMode();
+  const autoMigrate = String(process.env.AUTO_MIGRATE || '').trim().toLowerCase();
+
   console.log(`\n========================================`);
   console.log(`🔧 Database Mode: ${sqlMode ? 'SQL (PostgreSQL / SQLite)' : 'NoSQL (MongoDB)'}`);
   console.log(`🚩 USE_SQL flag: ${process.env.USE_SQL}`);
+  console.log(`⚡ AUTO_MIGRATE flag: ${process.env.AUTO_MIGRATE || 'false'}`);
   console.log(`========================================\n`);
 
   try {
@@ -43,8 +46,22 @@ const initDatabase = async () => {
     } else {
       await connectDB();
     }
+
+    // Developer-controlled automated migration during startup/redeploy
+    if (autoMigrate && autoMigrate !== 'false' && autoMigrate !== '0') {
+      const { migrateMongoToSQL, migrateSQLToMongo, syncBoth } = require('./services/migrationService');
+      console.log(`\n🚀 [Developer Auto-Migrate] Running startup migration (${autoMigrate})...`);
+
+      if (autoMigrate === 'to-sql' || (autoMigrate === 'true' && sqlMode)) {
+        await migrateMongoToSQL();
+      } else if (autoMigrate === 'to-mongo' || (autoMigrate === 'true' && !sqlMode)) {
+        await migrateSQLToMongo();
+      } else if (autoMigrate === 'sync') {
+        await syncBoth();
+      }
+    }
   } catch (err) {
-    console.error('⚠️ Database connection warning during startup:', err.message);
+    console.error('⚠️ Database connection / auto-migration warning during startup:', err.message);
   }
 };
 
@@ -87,26 +104,19 @@ app.use('/api/migrate', migrationRoutes);
 app.get('/api', (req, res) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.json({
-    message: 'Dual-Database (MERN & SQL) API with JWT Auth & Data Migration is running',
+    message: 'Dual-Database (MERN & SQL) API with Developer Migration Controls',
     endpoints: {
-      auth: {
-        register: 'POST /api/auth/register',
-        login: 'POST /api/auth/login',
-        me: 'GET /api/auth/me'
-      },
-      todos: 'GET /api/todos (Protected)',
-      migration: {
-        sqlToMongo: 'POST /api/migrate/to-mongo',
-        mongoToSql: 'POST /api/migrate/to-sql',
-        syncBoth: 'POST /api/migrate/sync'
-      },
-      health: 'GET /api/health'
+      auth: '/api/auth',
+      todos: '/api/todos (Protected)',
+      migrate: '/api/migrate (Developer Admin Key Required)',
+      health: '/api/health'
     },
-    useSQL: isSQLMode()
+    useSQL: isSQLMode(),
+    autoMigrate: process.env.AUTO_MIGRATE || 'false'
   });
 });
 
-// 6. Serve static client build if present, otherwise return API info
+// 6. Serve static client build if present
 const clientDistPath = path.resolve(__dirname, '../client/dist');
 app.use(express.static(clientDistPath));
 
@@ -121,7 +131,7 @@ app.get('*', (req, res) => {
       healthCheck: '/api/health',
       authEndpoint: '/api/auth',
       todosEndpoint: '/api/todos',
-      migrateEndpoint: '/api/migrate'
+      migrateEndpoint: '/api/migrate (Protected)'
     });
   }
 });
