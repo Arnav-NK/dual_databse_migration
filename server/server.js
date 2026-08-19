@@ -61,6 +61,7 @@ const handleHealthCheck = (req, res) => {
       status: 'Connected',
       server: 'Running',
       useSQL: isSQLMode(),
+      lastMigrationTime: global.lastMigrationTime || null,
       ...dbHealth
     });
   } catch (error) {
@@ -68,6 +69,7 @@ const handleHealthCheck = (req, res) => {
       status: 'Connecting',
       server: 'Running',
       useSQL: isSQLMode(),
+      lastMigrationTime: global.lastMigrationTime || null,
       error: error.message
     });
   }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { todoService, authService, getStoredUser, getStoredToken } from './services/api';
 import Header from './components/Header';
 import TodoInput from './components/TodoInput';
@@ -16,6 +16,10 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [dbStatus, setDbStatus] = useState({ status: 'Connecting', dbHost: '', dbName: '' });
 
+  // Track database state for session invalidation on migration/switch
+  const prevMigrationRef = useRef(null);
+  const prevUseSqlRef = useRef(null);
+
   // Dark Theme Only
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', 'dark');
@@ -25,11 +29,47 @@ export default function App() {
     setToast({ message, type, id: Date.now() });
   };
 
-  // Fetch Database health
+  // Logout helper
+  const performLogout = (reason = '') => {
+    authService.logout();
+    setUser(null);
+    setTodos([]);
+    setShowAuthModal(true);
+    if (reason) {
+      showToast(reason, 'info');
+    }
+  };
+
+  // Fetch Database health & detect migrations/DB switches
   const checkDbHealth = async () => {
     try {
       const health = await todoService.checkHealth();
       setDbStatus(health);
+
+      // Check if migration occurred or database switched while user is logged in
+      if (getStoredToken()) {
+        const migrationChanged =
+          prevMigrationRef.current !== null &&
+          health.lastMigrationTime &&
+          health.lastMigrationTime !== prevMigrationRef.current;
+
+        const dbModeChanged =
+          prevUseSqlRef.current !== null &&
+          typeof health.useSQL === 'boolean' &&
+          health.useSQL !== prevUseSqlRef.current;
+
+        if (migrationChanged || dbModeChanged) {
+          console.log('⚡ Migration / DB Switch detected. Logging out existing session.');
+          performLogout('Database updated or migrated. Please log in again.');
+        }
+      }
+
+      if (health.lastMigrationTime) {
+        prevMigrationRef.current = health.lastMigrationTime;
+      }
+      if (typeof health.useSQL === 'boolean') {
+        prevUseSqlRef.current = health.useSQL;
+      }
     } catch {
       setDbStatus({ status: 'Disconnected', dbHost: '', dbName: '' });
     }
@@ -47,11 +87,8 @@ export default function App() {
       setTodos(data);
     } catch (err) {
       console.error(err);
-      if (err.message && err.message.includes('authorized')) {
-        authService.logout();
-        setUser(null);
-        setShowAuthModal(true);
-        showToast('Session expired. Please log in again.', 'error');
+      if (err.message && (err.message.includes('authorized') || err.message.includes('token'))) {
+        performLogout('Session expired or database switched. Please log in again.');
       } else {
         showToast('Could not load tasks from database', 'error');
       }
@@ -73,12 +110,10 @@ export default function App() {
             setShowAuthModal(false);
             loadUserTodos();
           } else {
-            setUser(null);
-            setShowAuthModal(true);
+            performLogout();
           }
         } catch {
-          setUser(null);
-          setShowAuthModal(true);
+          performLogout();
         }
       } else {
         setShowAuthModal(true);
@@ -87,8 +122,8 @@ export default function App() {
 
     verifySession();
 
-    // Poll health check every 20s
-    const interval = setInterval(checkDbHealth, 20000);
+    // Poll health check every 10s to react quickly to database migrations/switches
+    const interval = setInterval(checkDbHealth, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -100,13 +135,9 @@ export default function App() {
     loadUserTodos();
   };
 
-  // Handle user logout
+  // Handle manual user logout
   const handleLogout = () => {
-    authService.logout();
-    setUser(null);
-    setTodos([]);
-    setShowAuthModal(true);
-    showToast('Logged out successfully', 'info');
+    performLogout('Logged out successfully');
   };
 
   // Add Todo
@@ -121,7 +152,11 @@ export default function App() {
       showToast('Task added', 'success');
     } catch (err) {
       console.error(err);
-      showToast(err.message || 'Failed to add task', 'error');
+      if (err.message && (err.message.includes('authorized') || err.message.includes('token'))) {
+        performLogout('Session expired. Please log in again.');
+      } else {
+        showToast(err.message || 'Failed to add task', 'error');
+      }
     }
   };
 
@@ -130,7 +165,6 @@ export default function App() {
     const target = todos.find((t) => t._id === id);
     if (!target) return;
 
-    // Optimistic UI update
     setTodos((prev) =>
       prev.map((t) => (t._id === id ? { ...t, completed: !t.completed } : t))
     );
@@ -141,11 +175,14 @@ export default function App() {
         prev.map((t) => (t._id === id ? updated : t))
       );
     } catch (err) {
-      // Revert on error
       setTodos((prev) =>
         prev.map((t) => (t._id === id ? target : t))
       );
-      showToast('Failed to update task status', 'error');
+      if (err.message && (err.message.includes('authorized') || err.message.includes('token'))) {
+        performLogout('Session expired. Please log in again.');
+      } else {
+        showToast('Failed to update task status', 'error');
+      }
     }
   };
 
@@ -154,7 +191,6 @@ export default function App() {
     const target = todos.find((t) => t._id === id);
     if (!target) return;
 
-    // Optimistic UI update
     setTodos((prev) =>
       prev.map((t) => (t._id === id ? { ...t, ...updates } : t))
     );
@@ -169,14 +205,17 @@ export default function App() {
       setTodos((prev) =>
         prev.map((t) => (t._id === id ? target : t))
       );
-      showToast('Failed to update task', 'error');
+      if (err.message && (err.message.includes('authorized') || err.message.includes('token'))) {
+        performLogout('Session expired. Please log in again.');
+      } else {
+        showToast('Failed to update task', 'error');
+      }
     }
   };
 
   // Delete Todo
   const handleDelete = async (id) => {
     const prevList = [...todos];
-    // Optimistic delete
     setTodos((prev) => prev.filter((t) => t._id !== id));
 
     try {
@@ -184,7 +223,11 @@ export default function App() {
       showToast('Task deleted', 'info');
     } catch (err) {
       setTodos(prevList);
-      showToast('Failed to delete task', 'error');
+      if (err.message && (err.message.includes('authorized') || err.message.includes('token'))) {
+        performLogout('Session expired. Please log in again.');
+      } else {
+        showToast('Failed to delete task', 'error');
+      }
     }
   };
 
@@ -194,7 +237,6 @@ export default function App() {
     const targetStatus = !allCompleted;
 
     const prevList = [...todos];
-    // Optimistic update
     setTodos((prev) =>
       prev.map((t) => ({ ...t, completed: targetStatus }))
     );
@@ -208,14 +250,17 @@ export default function App() {
       );
     } catch (err) {
       setTodos(prevList);
-      showToast('Failed to batch update tasks', 'error');
+      if (err.message && (err.message.includes('authorized') || err.message.includes('token'))) {
+        performLogout('Session expired. Please log in again.');
+      } else {
+        showToast('Failed to batch update tasks', 'error');
+      }
     }
   };
 
   // Clear all completed todos
   const handleClearCompleted = async () => {
     const prevList = [...todos];
-    // Optimistic clear
     setTodos((prev) => prev.filter((t) => !t.completed));
 
     try {
@@ -223,7 +268,11 @@ export default function App() {
       showToast(`Cleared ${result.deletedCount || 'completed'} tasks`, 'info');
     } catch (err) {
       setTodos(prevList);
-      showToast('Failed to clear completed tasks', 'error');
+      if (err.message && (err.message.includes('authorized') || err.message.includes('token'))) {
+        performLogout('Session expired. Please log in again.');
+      } else {
+        showToast('Failed to clear completed tasks', 'error');
+      }
     }
   };
 

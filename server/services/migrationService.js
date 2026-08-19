@@ -10,14 +10,15 @@ const { connectSQL, getSQLClient, getSQLEngine } = require('../config/sqlDb');
 const User = require('../models/User');
 const Todo = require('../models/Todo');
 
+// Global timestamp to signal client session reset
+global.lastMigrationTime = Date.now();
+
 // Helper to ensure both databases are connected
 async function ensureConnections() {
-  // Connect MongoDB if not connected
   if (mongoose.connection.readyState !== 1) {
     await connectDB();
   }
 
-  // Connect SQL if not connected
   let sql = getSQLClient();
   if (!sql) {
     sql = await connectSQL();
@@ -40,14 +41,13 @@ async function migrateSQLToMongo() {
 
   for (const sqlUser of sqlUsers) {
     const email = sqlUser.email.toLowerCase().trim();
-    // Direct upsert preserving existing bcrypt password hash
     let mongoUser = await User.findOne({ email });
 
     if (!mongoUser) {
-      // Create directly using MongoDB driver / bypass pre-save hash to preserve already-hashed password
+      // Create user document in MongoDB preserving password hash
       const result = await User.collection.insertOne({
         email: email,
-        password: sqlUser.password, // Keep existing bcrypt hash
+        password: sqlUser.password,
         createdAt: sqlUser.created_at ? new Date(sqlUser.created_at) : new Date(),
         updatedAt: sqlUser.updated_at ? new Date(sqlUser.updated_at) : new Date()
       });
@@ -55,7 +55,9 @@ async function migrateSQLToMongo() {
       console.log(`  ➕ Created MongoDB user: ${email}`);
     } else {
       userMap[String(sqlUser.id)] = String(mongoUser._id);
-      console.log(`  ✔️ Existing MongoDB user mapped: ${email}`);
+      // Ensure password in MongoDB is updated to match
+      await User.collection.updateOne({ _id: mongoUser._id }, { $set: { password: sqlUser.password } });
+      console.log(`  ✔️ Existing MongoDB user mapped & synced: ${email}`);
     }
   }
 
@@ -70,10 +72,9 @@ async function migrateSQLToMongo() {
     const targetUserId = sqlTodo.user_id ? userMap[String(sqlTodo.user_id)] : null;
     const completed = Boolean(sqlTodo.completed === true || sqlTodo.completed === 1);
 
-    // Check if task already exists for this user in MongoDB (matching text and user)
     let filter = { text: sqlTodo.text };
-    if (targetUserId) {
-      filter.user = targetUserId;
+    if (targetUserId && mongoose.Types.ObjectId.isValid(targetUserId)) {
+      filter.user = new mongoose.Types.ObjectId(targetUserId);
     }
 
     const existingMongoTodo = await Todo.findOne(filter);
@@ -85,8 +86,8 @@ async function migrateSQLToMongo() {
         createdAt: sqlTodo.created_at ? new Date(sqlTodo.created_at) : new Date(),
         updatedAt: sqlTodo.updated_at ? new Date(sqlTodo.updated_at) : new Date()
       };
-      if (targetUserId) {
-        todoDoc.user = targetUserId;
+      if (targetUserId && mongoose.Types.ObjectId.isValid(targetUserId)) {
+        todoDoc.user = new mongoose.Types.ObjectId(targetUserId);
       }
 
       await Todo.collection.insertOne(todoDoc);
@@ -97,6 +98,8 @@ async function migrateSQLToMongo() {
     }
   }
 
+  global.lastMigrationTime = Date.now();
+
   console.log(`\n🎉 SQL -> MongoDB Migration Complete!`);
   console.log(`  Users Mapped: ${Object.keys(userMap).length}`);
   console.log(`  Todos Added: ${insertedCount} (Skipped Duplicates: ${skippedCount})\n`);
@@ -106,7 +109,8 @@ async function migrateSQLToMongo() {
     direction: 'SQL -> MongoDB',
     usersCount: Object.keys(userMap).length,
     todosInserted: insertedCount,
-    todosSkipped: skippedCount
+    todosSkipped: skippedCount,
+    lastMigrationTime: global.lastMigrationTime
   };
 }
 
@@ -128,19 +132,19 @@ async function migrateMongoToSQL() {
 
     let sqlUserId;
     if (rows.length === 0) {
-      sqlUserId = crypto.randomUUID().replace(/-/g, '').substring(0, 24);
+      // Use exact same ID from MongoDB
+      sqlUserId = String(mUser._id);
       const now = mUser.createdAt ? new Date(mUser.createdAt).toISOString() : new Date().toISOString();
 
       await sql.query(
         'INSERT INTO users (id, email, password, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
         [sqlUserId, email, mUser.password, now, now]
       );
-      console.log(`  ➕ Created SQL user: ${email}`);
+      console.log(`  ➕ Created SQL user: ${email} (ID: ${sqlUserId})`);
     } else {
       sqlUserId = String(rows[0].id);
-      // Update password hash if needed
       await sql.query('UPDATE users SET password = ? WHERE id = ?', [mUser.password, sqlUserId]);
-      console.log(`  ✔️ Existing SQL user mapped: ${email}`);
+      console.log(`  ✔️ Existing SQL user mapped & synced: ${email}`);
     }
 
     userMap[String(mUser._id)] = sqlUserId;
@@ -157,9 +161,8 @@ async function migrateMongoToSQL() {
     const targetUserId = mTodo.user ? userMap[String(mTodo.user)] : null;
     const completed = mTodo.completed ? 1 : 0;
 
-    // Check if task exists in SQL
     let checkSql = 'SELECT id FROM todos WHERE text = ?';
-    let checkParams = [mTodo.text];
+    const checkParams = [mTodo.text];
 
     if (targetUserId) {
       checkSql += ' AND user_id = ?';
@@ -185,6 +188,8 @@ async function migrateMongoToSQL() {
     }
   }
 
+  global.lastMigrationTime = Date.now();
+
   console.log(`\n🎉 MongoDB -> SQL Migration Complete!`);
   console.log(`  Users Mapped: ${Object.keys(userMap).length}`);
   console.log(`  Todos Added: ${insertedCount} (Skipped Duplicates: ${skippedCount})\n`);
@@ -194,11 +199,12 @@ async function migrateMongoToSQL() {
     direction: 'MongoDB -> SQL',
     usersCount: Object.keys(userMap).length,
     todosInserted: insertedCount,
-    todosSkipped: skippedCount
+    todosSkipped: skippedCount,
+    lastMigrationTime: global.lastMigrationTime
   };
 }
 
-// 3. Bi-directional Synchronization (Merges both databases seamlessly)
+// 3. Bi-directional Synchronization
 async function syncBoth() {
   console.log('\n========================================');
   console.log('🔄 Performing 2-Way Sync between SQL & NoSQL');
@@ -207,11 +213,14 @@ async function syncBoth() {
   const step1 = await migrateSQLToMongo();
   const step2 = await migrateMongoToSQL();
 
+  global.lastMigrationTime = Date.now();
+
   return {
     status: 'Success',
     action: '2-Way Bidirectional Sync',
     step1_sql_to_mongo: step1,
-    step2_mongo_to_sql: step2
+    step2_mongo_to_sql: step2,
+    lastMigrationTime: global.lastMigrationTime
   };
 }
 
