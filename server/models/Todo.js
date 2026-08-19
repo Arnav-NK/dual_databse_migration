@@ -2,6 +2,11 @@ const mongoose = require('mongoose');
 
 const todoSchema = new mongoose.Schema(
   {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: false // supports legacy/guest or authenticated
+    },
     text: {
       type: String,
       required: [true, 'Please provide a task description'],

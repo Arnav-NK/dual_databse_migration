@@ -10,6 +10,7 @@ const connectDB = require('./config/db');
 const { connectSQL } = require('./config/sqlDb');
 const { getTodoRepository, isSQLMode } = require('./repositories/todoRepositoryFactory');
 const todoRoutes = require('./routes/todoRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 const app = express();
 
@@ -75,16 +76,22 @@ app.get('/api/health', handleHealthCheck);
 app.get('/health', handleHealthCheck);
 
 // 4. API Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/todos', todoRoutes);
 
 // 5. Root Info Route
 app.get('/api', (req, res) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.json({
-    message: 'Dual-Database (MERN & SQL) API is running',
+    message: 'Dual-Database (MERN & SQL) API with JWT Auth is running',
     endpoints: {
-      health: '/api/health',
-      todos: '/api/todos'
+      auth: {
+        register: 'POST /api/auth/register',
+        login: 'POST /api/auth/login',
+        me: 'GET /api/auth/me'
+      },
+      health: 'GET /api/health',
+      todos: 'GET /api/todos (Protected)'
     },
     useSQL: isSQLMode()
   });
@@ -103,6 +110,7 @@ app.get('*', (req, res) => {
     res.json({
       message: 'Dual-Database Backend API Server is active.',
       healthCheck: '/api/health',
+      authEndpoint: '/api/auth',
       todosEndpoint: '/api/todos'
     });
   }

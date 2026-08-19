@@ -2,27 +2,37 @@ const crypto = require('crypto');
 const { getSQLClient, getSQLEngine } = require('../config/sqlDb');
 
 class SqlTodoRepository {
-  // Helper to normalize SQL row to JSON matching the standard format
   normalizeRow(row) {
     if (!row) return null;
     return {
       _id: String(row.id),
       text: row.text,
       completed: Boolean(row.completed === true || row.completed === 1),
+      userId: row.user_id ? String(row.user_id) : null,
       createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
       updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString()
     };
   }
 
-  async getAll({ status } = {}) {
+  async getAll({ status, userId } = {}) {
     const client = getSQLClient();
     let sql = 'SELECT * FROM todos';
+    const conditions = [];
     const params = [];
 
+    if (userId) {
+      conditions.push('user_id = ?');
+      params.push(String(userId));
+    }
+
     if (status === 'active') {
-      sql += ' WHERE completed = FALSE OR completed = 0';
+      conditions.push('(completed = FALSE OR completed = 0)');
     } else if (status === 'completed') {
-      sql += ' WHERE completed = TRUE OR completed = 1';
+      conditions.push('(completed = TRUE OR completed = 1)');
+    }
+
+    if (conditions.length > 0) {
+      sql += ' WHERE ' + conditions.join(' AND ');
     }
 
     sql += ' ORDER BY created_at DESC';
@@ -31,89 +41,136 @@ class SqlTodoRepository {
     return rows.map((r) => this.normalizeRow(r));
   }
 
-  async getById(id) {
+  async getById(id, userId = null) {
     const client = getSQLClient();
-    const rows = await client.query('SELECT * FROM todos WHERE id = ? LIMIT 1', [String(id)]);
+    let sql = 'SELECT * FROM todos WHERE id = ?';
+    const params = [String(id)];
+
+    if (userId) {
+      sql += ' AND user_id = ?';
+      params.push(String(userId));
+    }
+
+    sql += ' LIMIT 1';
+    const rows = await client.query(sql, params);
     return rows.length > 0 ? this.normalizeRow(rows[0]) : null;
   }
 
-  async create({ text }) {
+  async create({ text, userId = null }) {
     const client = getSQLClient();
-    const id = crypto.randomUUID().replace(/-/g, '').substring(0, 24); // 24 hex char ID
+    const id = crypto.randomUUID().replace(/-/g, '').substring(0, 24);
     const now = new Date().toISOString();
 
     await client.query(
-      'INSERT INTO todos (id, text, completed, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-      [id, text.trim(), 0, now, now]
+      'INSERT INTO todos (id, user_id, text, completed, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+      [id, userId ? String(userId) : null, text.trim(), 0, now, now]
     );
 
     return {
       _id: id,
       text: text.trim(),
       completed: false,
+      userId: userId ? String(userId) : null,
       createdAt: now,
       updatedAt: now
     };
   }
 
-  async update(id, { text, completed }) {
+  async update(id, { text, completed }, userId = null) {
     const client = getSQLClient();
-    const existing = await this.getById(id);
+    const existing = await this.getById(id, userId);
     if (!existing) return null;
 
     const newText = typeof text === 'string' ? text.trim() : existing.text;
     const newCompleted = typeof completed === 'boolean' ? (completed ? 1 : 0) : (existing.completed ? 1 : 0);
     const now = new Date().toISOString();
 
-    await client.query(
-      'UPDATE todos SET text = ?, completed = ?, updated_at = ? WHERE id = ?',
-      [newText, newCompleted, now, String(id)]
-    );
+    let sql = 'UPDATE todos SET text = ?, completed = ?, updated_at = ? WHERE id = ?';
+    const params = [newText, newCompleted, now, String(id)];
 
-    return this.getById(id);
+    if (userId) {
+      sql += ' AND user_id = ?';
+      params.push(String(userId));
+    }
+
+    await client.query(sql, params);
+    return this.getById(id, userId);
   }
 
-  async toggle(id) {
+  async toggle(id, userId = null) {
     const client = getSQLClient();
-    const existing = await this.getById(id);
+    const existing = await this.getById(id, userId);
     if (!existing) return null;
 
     const newCompleted = existing.completed ? 0 : 1;
     const now = new Date().toISOString();
 
-    await client.query(
-      'UPDATE todos SET completed = ?, updated_at = ? WHERE id = ?',
-      [newCompleted, now, String(id)]
-    );
+    let sql = 'UPDATE todos SET completed = ?, updated_at = ? WHERE id = ?';
+    const params = [newCompleted, now, String(id)];
 
-    return this.getById(id);
+    if (userId) {
+      sql += ' AND user_id = ?';
+      params.push(String(userId));
+    }
+
+    await client.query(sql, params);
+    return this.getById(id, userId);
   }
 
-  async delete(id) {
+  async delete(id, userId = null) {
     const client = getSQLClient();
-    const existing = await this.getById(id);
+    const existing = await this.getById(id, userId);
     if (!existing) return null;
 
-    await client.query('DELETE FROM todos WHERE id = ?', [String(id)]);
+    let sql = 'DELETE FROM todos WHERE id = ?';
+    const params = [String(id)];
+
+    if (userId) {
+      sql += ' AND user_id = ?';
+      params.push(String(userId));
+    }
+
+    await client.query(sql, params);
     return { id: String(id) };
   }
 
-  async clearCompleted() {
+  async clearCompleted(userId = null) {
     const client = getSQLClient();
-    const completedRows = await client.query('SELECT id FROM todos WHERE completed = TRUE OR completed = 1');
+    let countSql = 'SELECT id FROM todos WHERE (completed = TRUE OR completed = 1)';
+    const params = [];
+
+    if (userId) {
+      countSql += ' AND user_id = ?';
+      params.push(String(userId));
+    }
+
+    const completedRows = await client.query(countSql, params);
     const count = completedRows.length;
 
-    await client.query('DELETE FROM todos WHERE completed = TRUE OR completed = 1');
+    let deleteSql = 'DELETE FROM todos WHERE (completed = TRUE OR completed = 1)';
+    if (userId) {
+      deleteSql += ' AND user_id = ?';
+    }
+
+    await client.query(deleteSql, params);
     return { deletedCount: count };
   }
 
-  async toggleAll(completed = true) {
+  async toggleAll(completed = true, userId = null) {
     const client = getSQLClient();
     const targetStatus = completed ? 1 : 0;
     const now = new Date().toISOString();
 
-    await client.query('UPDATE todos SET completed = ?, updated_at = ?', [targetStatus, now]);
-    return this.getAll();
+    let sql = 'UPDATE todos SET completed = ?, updated_at = ?';
+    const params = [targetStatus, now];
+
+    if (userId) {
+      sql += ' WHERE user_id = ?';
+      params.push(String(userId));
+    }
+
+    await client.query(sql, params);
+    return this.getAll({ userId });
   }
 
   getHealth() {

@@ -65,16 +65,35 @@ const connectSQL = async () => {
       pool
     };
 
-    // Auto-create table
+    // Auto-create users table
+    await sqlClient.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id VARCHAR(64) PRIMARY KEY,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Auto-create todos table
     await sqlClient.query(`
       CREATE TABLE IF NOT EXISTS todos (
         id VARCHAR(64) PRIMARY KEY,
+        user_id VARCHAR(64),
         text TEXT NOT NULL,
         completed BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Ensure user_id column exists if table existed previously
+    try {
+      await sqlClient.query(`ALTER TABLE todos ADD COLUMN IF NOT EXISTS user_id VARCHAR(64);`);
+    } catch (e) {
+      // Ignored if column already exists
+    }
   } else {
     // SQLite Fallback (for local testing without needing Postgres setup)
     const sqlite3 = require('sqlite3').verbose();
@@ -112,16 +131,39 @@ const connectSQL = async () => {
       db
     };
 
-    // Auto-create table
+    // Auto-create users table in SQLite
+    await sqlClient.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+
+    // Auto-create todos table in SQLite
     await sqlClient.query(`
       CREATE TABLE IF NOT EXISTS todos (
         id TEXT PRIMARY KEY,
+        user_id TEXT,
         text TEXT NOT NULL,
         completed INTEGER DEFAULT 0,
         created_at TEXT DEFAULT (datetime('now')),
         updated_at TEXT DEFAULT (datetime('now'))
       );
     `);
+
+    // Safe column check for SQLite
+    try {
+      const columns = await sqlClient.query(`PRAGMA table_info(todos);`);
+      const hasUserId = columns.some((col) => col.name === 'user_id');
+      if (!hasUserId) {
+        await sqlClient.query(`ALTER TABLE todos ADD COLUMN user_id TEXT;`);
+      }
+    } catch (e) {
+      // Ignored
+    }
   }
 
   return sqlClient;

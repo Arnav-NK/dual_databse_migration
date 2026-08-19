@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { todoService } from './services/api';
+import { todoService, authService, getStoredUser, getStoredToken } from './services/api';
 import Header from './components/Header';
 import TodoInput from './components/TodoInput';
 import TodoList from './components/TodoList';
 import TodoFooter from './components/TodoFooter';
+import AuthModal from './components/AuthModal';
 import Toast from './components/Toast';
 
 export default function App() {
+  const [user, setUser] = useState(() => getStoredUser());
+  const [showAuthModal, setShowAuthModal] = useState(!getStoredToken());
   const [todos, setTodos] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState('all');
   const [toast, setToast] = useState(null);
   const [dbStatus, setDbStatus] = useState({ status: 'Connecting', dbHost: '', dbName: '' });
@@ -22,46 +25,96 @@ export default function App() {
     setToast({ message, type, id: Date.now() });
   };
 
-  // Check Database health & fetch initial todos
-  const loadData = async () => {
+  // Fetch Database health
+  const checkDbHealth = async () => {
     try {
-      // Check health
-      try {
-        const health = await todoService.checkHealth();
-        setDbStatus(health);
-      } catch (err) {
-        setDbStatus({ status: 'Disconnected', dbHost: '', dbName: '' });
-      }
+      const health = await todoService.checkHealth();
+      setDbStatus(health);
+    } catch {
+      setDbStatus({ status: 'Disconnected', dbHost: '', dbName: '' });
+    }
+  };
 
-      // Fetch todos
+  // Fetch user's todos
+  const loadUserTodos = async () => {
+    if (!getStoredToken()) {
+      setTodos([]);
+      return;
+    }
+    setLoading(true);
+    try {
       const data = await todoService.getTodos('all');
       setTodos(data);
     } catch (err) {
       console.error(err);
-      showToast('Could not load tasks from database. Please check your connection.', 'error');
+      if (err.message && err.message.includes('authorized')) {
+        authService.logout();
+        setUser(null);
+        setShowAuthModal(true);
+        showToast('Session expired. Please log in again.', 'error');
+      } else {
+        showToast('Could not load tasks from database', 'error');
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // Initial Load: check user session & db health
   useEffect(() => {
-    loadData();
+    checkDbHealth();
 
-    // Poll health check every 15s
-    const interval = setInterval(async () => {
-      try {
-        const health = await todoService.checkHealth();
-        setDbStatus(health);
-      } catch {
-        setDbStatus({ status: 'Disconnected', dbHost: '', dbName: '' });
+    const verifySession = async () => {
+      if (getStoredToken()) {
+        try {
+          const verifiedUser = await authService.getMe();
+          if (verifiedUser) {
+            setUser(verifiedUser);
+            setShowAuthModal(false);
+            loadUserTodos();
+          } else {
+            setUser(null);
+            setShowAuthModal(true);
+          }
+        } catch {
+          setUser(null);
+          setShowAuthModal(true);
+        }
+      } else {
+        setShowAuthModal(true);
       }
-    }, 15000);
+    };
 
+    verifySession();
+
+    // Poll health check every 20s
+    const interval = setInterval(checkDbHealth, 20000);
     return () => clearInterval(interval);
   }, []);
 
+  // Handle successful login or registration
+  const handleAuthSuccess = (authUser) => {
+    setUser(authUser);
+    setShowAuthModal(false);
+    showToast(`Welcome, ${authUser.email.split('@')[0]}!`, 'success');
+    loadUserTodos();
+  };
+
+  // Handle user logout
+  const handleLogout = () => {
+    authService.logout();
+    setUser(null);
+    setTodos([]);
+    setShowAuthModal(true);
+    showToast('Logged out successfully', 'info');
+  };
+
   // Add Todo
   const handleAddTodo = async (text) => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
     try {
       const newTodo = await todoService.createTodo(text);
       setTodos((prev) => [newTodo, ...prev]);
@@ -187,7 +240,12 @@ export default function App() {
 
   return (
     <div className="app-wrapper">
-      <Header dbStatus={dbStatus} />
+      <Header
+        dbStatus={dbStatus}
+        user={user}
+        onLogout={handleLogout}
+        onOpenAuth={() => setShowAuthModal(true)}
+      />
 
       <main className="main-card">
         <TodoInput
@@ -217,6 +275,12 @@ export default function App() {
         )}
       </main>
 
+      {/* Auth Modal Overlay */}
+      {showAuthModal && (
+        <AuthModal onAuthSuccess={handleAuthSuccess} />
+      )}
+
+      {/* Toast Notifications */}
       {toast && (
         <div className="toast-container">
           <Toast
